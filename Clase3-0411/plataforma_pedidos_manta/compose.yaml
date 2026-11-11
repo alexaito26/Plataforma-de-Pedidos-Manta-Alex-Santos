@@ -1,0 +1,22 @@
+services:
+  inventario:
+    build: ./inventario
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  
+  pedidos:
+    build: ./pedidos
+    environment:
+      - INVENTARIO_URL=http://inventario:3001
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
