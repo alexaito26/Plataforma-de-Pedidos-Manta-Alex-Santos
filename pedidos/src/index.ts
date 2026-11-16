@@ -5,6 +5,7 @@ import { contarPrimos } from "./calculo.js";
 import { Worker } from "node:worker_threads";
 import path from "node:path";
 import { medirLatencia, resumenMetricas } from "./metricas";
+import { contarPrimosEnPool, estadoPool } from "./pool";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const INVENTARIO_URL = process.env.INVENTARIO_URL ?? "http://localhost:3001";
@@ -247,6 +248,24 @@ app.get("/reporte/worker", async (req: Request, res: Response) => {
             error: "Error al ejecutar el Worker",
             motivo: e.message
         });
+    }
+});
+
+// Reporte mediante el despachador con límite
+app.get("/reporte/pool", async (req: Request, res: Response) => {
+    const n = leerN(req);
+    const inicio = performance.now();
+    try {
+        const primos = await contarPrimosEnPool(n);
+        res.status(200).json({ modo: "pool", n, primos, duracionMs: Math.round(performance.now() - inicio) });
+    } catch (error) {
+        const e = error as Error;
+        if (e.name === "PoolLleno") {
+            res.set("Retry-After", "1").status(503).json({ error: e.message, pool: estadoPool() });
+        } else {
+            console.error("Error en pool:", e.message);
+            res.status(500).json({ error: "Error al ejecutar el pool", motivo: e.message });
+        }
     }
 });
 
